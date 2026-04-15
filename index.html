@@ -11,10 +11,19 @@
 <body>
 
   <div class="card">
-    <h2>🌞 Horas de luz</h2>
+    <h2>🌞 SunPath</h2>
     <p id="status">Obteniendo ubicación...</p>
     <button onclick="init()">Calcular</button>
     <canvas id="chart"></canvas>
+  </div>
+
+  <!-- Modal de Advertencia -->
+  <div id="locationModal" class="modal-overlay">
+    <div class="modal-content">
+      <h3>📍 Ubicación aproximada</h3>
+      <p>No pudimos acceder a tu GPS de alta precisión. Usaremos tu dirección IP, lo cual puede tener un pequeño margen de error.</p>
+      <button onclick="closeModal()">Entendido</button>
+    </div>
   </div>
 
 <script src="script.js"></script>

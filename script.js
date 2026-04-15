@@ -1,3 +1,11 @@
+function showModal() {
+  document.getElementById('locationModal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('locationModal').style.display = 'none';
+}
+
 async function getLocation() {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
@@ -13,10 +21,9 @@ async function getLocation() {
         });
       },
       async () => {
-        // fallback por IP
-        document.getElementById("status").innerText =
-          "⚠️ Usando ubicación por IP (menos precisa)...";
-
+        // Mostrar modal avisando del uso de IP
+        showModal();
+        
         try {
           const res = await fetch("https://ipapi.co/json/");
           const data = await res.json();
