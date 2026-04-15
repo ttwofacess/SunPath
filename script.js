@@ -58,12 +58,34 @@ function calcularEstadoHorario(lat, lon) {
 
 let sunChart = null;
 
-function renderChart(estados, labels) {
+function renderChart(estados, labels, horasLuz) {
   const ctx = document.getElementById('chart');
 
   if (sunChart) {
     sunChart.destroy();
   }
+
+  // Plugin para dibujar el texto en el centro
+  const centerTextPlugin = {
+    id: 'centerText',
+    afterDraw: (chart) => {
+      const { ctx, chartArea: { top, bottom, left, right, width, height } } = chart;
+      ctx.save();
+      
+      // Configuración del texto (escalado básico según el ancho)
+      const fontSize = (height / 110).toFixed(2);
+      ctx.font = `bold ${fontSize}rem sans-serif`;
+      ctx.fillStyle = '#facc15';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      const centerX = (left + right) / 2;
+      const centerY = (top + bottom) / 2;
+      
+      ctx.fillText(`${horasLuz.toFixed(1)}h`, centerX, centerY);
+      ctx.restore();
+    }
+  };
 
   // Colores: Amarillo para luz, Azul muy oscuro para oscuridad
   const colors = estados.map(isLight => isLight ? '#facc15' : '#0f172a');
@@ -73,20 +95,19 @@ function renderChart(estados, labels) {
     data: {
       labels: labels,
       datasets: [{
-        data: Array(24).fill(1), // 24 segmentos iguales
+        data: Array(24).fill(1),
         backgroundColor: colors,
         borderColor: '#1e293b',
         borderWidth: 1,
         hoverOffset: 4
       }]
     },
+    plugins: [centerTextPlugin],
     options: {
       responsive: true,
       maintainAspectRatio: true,
       plugins: {
-        legend: {
-          display: false // Ocultamos la leyenda porque ya tenemos 24 etiquetas
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
             label: (context) => {
@@ -96,7 +117,7 @@ function renderChart(estados, labels) {
           }
         }
       },
-      cutout: '60%', // Hace el agujero central más grande
+      cutout: '70%', // Aumentamos un poco más el hueco para el texto
     }
   });
 }
@@ -110,6 +131,10 @@ async function init() {
     const hoy = new Date();
     const times = SunCalc.getTimes(hoy, loc.lat, loc.lon);
 
+    // Calcular horas de luz precisas
+    const diffMs = times.sunset - times.sunrise;
+    const horasLuzTotal = isNaN(diffMs) ? 0 : diffMs / (1000 * 60 * 60);
+
     status.innerText = `📍 Lat: ${loc.lat.toFixed(2)}, Lon: ${loc.lon.toFixed(2)}`;
     status.innerText += `
       \n🌅 Amanecer: ${times.sunrise.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -117,7 +142,7 @@ async function init() {
     `;
 
     const { estados, labels } = calcularEstadoHorario(loc.lat, loc.lon);
-    renderChart(estados, labels);
+    renderChart(estados, labels, horasLuzTotal);
 
   } catch (err) {
     status.innerText = "Error: " + err;
