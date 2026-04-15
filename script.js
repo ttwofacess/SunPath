@@ -34,41 +34,50 @@ async function getLocation() {
   });
 }
 
-function calcularHorasLuz(lat, lon) {
+function calcularEstadoHorario(lat, lon) {
   const hoy = new Date();
-  const times = SunCalc.getTimes(hoy, lat, lon);
+  hoy.setMinutes(0, 0, 0); // Normalizar a inicio del día
 
-  const sunrise = times.sunrise;
-  const sunset = times.sunset;
+  const estados = [];
+  const labels = [];
 
-  const diffMs = sunset - sunrise;
-  const horasLuz = diffMs / (1000 * 60 * 60);
+  for (let i = 0; i < 24; i++) {
+    const horaEvaluada = new Date(hoy);
+    horaEvaluada.setHours(i);
+    
+    // Obtenemos la posición del sol para esa hora específica
+    const sunPos = SunCalc.getPosition(horaEvaluada, lat, lon);
+    
+    // Si la altitud es > 0, el sol está sobre el horizonte
+    estados.push(sunPos.altitude > 0);
+    labels.push(`${i}h`);
+  }
 
-  return {
-    sunrise,
-    sunset,
-    horasLuz,
-    horasOscuridad: 24 - horasLuz
-  };
+  return { estados, labels };
 }
 
 let sunChart = null;
 
-function renderChart(luz, oscuridad) {
+function renderChart(estados, labels) {
   const ctx = document.getElementById('chart');
 
   if (sunChart) {
     sunChart.destroy();
   }
 
+  // Colores: Amarillo para luz, Azul muy oscuro para oscuridad
+  const colors = estados.map(isLight => isLight ? '#facc15' : '#0f172a');
+
   sunChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
-      labels: ['Luz', 'Oscuridad'],
+      labels: labels,
       datasets: [{
-        data: [luz, oscuridad],
-        backgroundColor: ['#facc15', '#0f172a'],
-        borderWidth: 0
+        data: Array(24).fill(1), // 24 segmentos iguales
+        backgroundColor: colors,
+        borderColor: '#1e293b',
+        borderWidth: 1,
+        hoverOffset: 4
       }]
     },
     options: {
@@ -76,12 +85,18 @@ function renderChart(luz, oscuridad) {
       maintainAspectRatio: true,
       plugins: {
         legend: {
-          position: 'bottom',
-          labels: {
-            color: '#f8fafc'
+          display: false // Ocultamos la leyenda porque ya tenemos 24 etiquetas
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const isLight = estados[context.dataIndex];
+              return isLight ? '☀️ Luz del día' : '🌙 Oscuridad';
+            }
           }
         }
-      }
+      },
+      cutout: '60%', // Hace el agujero central más grande
     }
   });
 }
@@ -92,20 +107,20 @@ async function init() {
 
   try {
     const loc = await getLocation();
+    const hoy = new Date();
+    const times = SunCalc.getTimes(hoy, loc.lat, loc.lon);
 
     status.innerText = `📍 Lat: ${loc.lat.toFixed(2)}, Lon: ${loc.lon.toFixed(2)}`;
-
-    const data = calcularHorasLuz(loc.lat, loc.lon);
-
     status.innerText += `
-      \n🌅 Amanecer: ${data.sunrise.toLocaleTimeString()}
-      \n🌇 Atardecer: ${data.sunset.toLocaleTimeString()}
-      \n⏱️ Horas de luz: ${data.horasLuz.toFixed(2)}
+      \n🌅 Amanecer: ${times.sunrise.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+      \n🌇 Atardecer: ${times.sunset.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
     `;
 
-    renderChart(data.horasLuz, data.horasOscuridad);
+    const { estados, labels } = calcularEstadoHorario(loc.lat, loc.lon);
+    renderChart(estados, labels);
 
   } catch (err) {
     status.innerText = "Error: " + err;
+    console.error(err);
   }
 }
