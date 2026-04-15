@@ -52,17 +52,36 @@ function calcularHorasLuz(lat, lon) {
   };
 }
 
+let sunChart = null;
+
 function renderChart(luz, oscuridad) {
   const ctx = document.getElementById('chart');
 
-  new Chart(ctx, {
+  if (sunChart) {
+    sunChart.destroy();
+  }
+
+  sunChart = new Chart(ctx, {
     type: 'doughnut',
     data: {
       labels: ['Luz', 'Oscuridad'],
       datasets: [{
         data: [luz, oscuridad],
-        backgroundColor: ['#facc15', '#1e293b']
+        backgroundColor: ['#facc15', '#0f172a'],
+        borderWidth: 0
       }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#f8fafc'
+          }
+        }
+      }
     }
   });
 }
